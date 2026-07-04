@@ -1,42 +1,42 @@
 # Employee Management API
 
-Prueba técnica para .NET Backend Developer. API RESTful en ASP.NET Core sobre PostgreSQL, con autenticación JWT, autorización por roles y arquitectura limpia.
+Technical test for .NET Backend Developer. RESTful API built with ASP.NET Core on PostgreSQL, featuring JWT authentication, role-based authorization, and Clean Architecture.
 
 ## Stack
 
 - .NET 10 (LTS) + ASP.NET Core Web API
 - Entity Framework Core 10 + `Npgsql.EntityFrameworkCore.PostgreSQL`
-- PostgreSQL 16 (imagen `postgres:16-alpine`)
+- PostgreSQL 16 (`postgres:16-alpine` image)
 - ASP.NET Core Identity + JWT (`Microsoft.AspNetCore.Authentication.JwtBearer`)
 - Swashbuckle (Swagger UI)
-- xUnit + Moq (tests unitarios)
+- xUnit + Moq (unit tests)
 - Docker + docker-compose
 
-> Nota sobre versión: el enunciado no especifica versión de .NET. Se usó .NET 10 (última LTS disponible al momento). Todo compila y ejecuta sin cambios sobre .NET 8/9 salvo actualizar el `TargetFramework`.
+> **Note on .NET version:** the test does not specify a version. .NET 10 (latest LTS available) was used. The code compiles and runs unchanged on .NET 8/9 — only the `TargetFramework` value needs updating.
 
-## Arquitectura
+## Architecture
 
-**Clean Architecture** con 4 proyectos, dependencias hacia adentro:
+**Clean Architecture** with 4 projects, dependencies pointing inward:
 
 ```
 src/
-├── EmployeeManagement.Domain/          # Entidades y enums, sin dependencias externas
-├── EmployeeManagement.Application/     # Interfaces, DTOs, servicios, patrones
-├── EmployeeManagement.Infrastructure/  # EF Core, repositorios, Identity, JWT
-└── EmployeeManagement.Api/             # Controllers, middleware, composición
+├── EmployeeManagement.Domain/          # Entities and enums — no external dependencies
+├── EmployeeManagement.Application/     # Interfaces, DTOs, services, patterns
+├── EmployeeManagement.Infrastructure/  # EF Core, repositories, Identity, JWT
+└── EmployeeManagement.Api/             # Controllers, middleware, composition root
 tests/
 └── EmployeeManagement.Tests/           # xUnit + Moq
 ```
 
-Reglas: `Api → Infrastructure → Application → Domain`. `Domain` no depende de nada.
+Dependency rule: `Api → Infrastructure → Application → Domain`. `Domain` depends on nothing.
 
-## Patrones aplicados (excluyen Singleton)
+## Design Patterns Applied (Singleton excluded)
 
-1. **Strategy** — `IBonusStrategy` con `RegularEmployeeBonusStrategy` (10%), `ManagerBonusStrategy` (20%) y `SeniorManagerBonusStrategy` (25%). Añadir un nuevo tipo de manager es sólo una clase nueva y un registro DI (OCP).
-2. **Factory** — `BonusCalculatorFactory : IBonusCalculator` recibe todas las estrategias vía `IEnumerable<IBonusStrategy>` y selecciona la correcta según `Employee.CurrentPosition`.
-3. **Repository** — `IEmployeeRepository` desacopla la capa de aplicación de EF Core. La implementación (`EmployeeRepository`) vive en Infrastructure.
+1. **Strategy** — `IBonusStrategy` with `RegularEmployeeBonusStrategy` (10%), `ManagerBonusStrategy` (20%), and `SeniorManagerBonusStrategy` (25%). Adding a new manager type requires only a new class and a DI registration (OCP).
+2. **Factory** — `BonusCalculatorFactory : IBonusCalculator` receives all strategies via `IEnumerable<IBonusStrategy>` and selects the correct one based on `Employee.CurrentPosition`.
+3. **Repository** — `IEmployeeRepository` decouples the application layer from EF Core. The implementation (`EmployeeRepository`) lives in Infrastructure.
 
-Registro DI (`InfrastructureRegistration`):
+DI registration (`InfrastructureRegistration`):
 
 ```csharp
 services.AddScoped<IBonusStrategy, RegularEmployeeBonusStrategy>();
@@ -46,64 +46,111 @@ services.AddScoped<IBonusCalculator, BonusCalculatorFactory>();
 services.AddScoped<IEmployeeRepository, EmployeeRepository>();
 ```
 
-## SOLID en la solución
+## SOLID Principles
 
-- **S**: `EmployeeService`, `BonusCalculatorFactory`, cada strategy, cada `IEntityTypeConfiguration<T>` tienen una única razón de cambio.
-- **O**: agregar una nueva estrategia de bono no toca código existente, sólo suma una clase.
-- **L**: cualquier `IBonusStrategy` es intercambiable en la factory.
-- **I**: interfaces enfocadas (`IEmployeeRepository`, `IBonusCalculator`, `IJwtTokenService`, `IAuthService`).
-- **D**: los controllers dependen de abstracciones (`IEmployeeService`, `IAuthService`), no de implementaciones.
+- **S**: `EmployeeService`, `BonusCalculatorFactory`, each strategy, and each `IEntityTypeConfiguration<T>` have a single reason to change.
+- **O**: Adding a new bonus strategy does not touch existing code — just add a new class.
+- **L**: Any `IBonusStrategy` implementation is interchangeable inside the factory.
+- **I**: Focused interfaces (`IEmployeeRepository`, `IBonusCalculator`, `IJwtTokenService`, `IAuthService`).
+- **D**: Controllers depend on abstractions (`IEmployeeService`, `IAuthService`), not implementations.
 
-## Requisitos
+## Requirements
 
-- Docker + Docker Compose (necesario)
-- .NET SDK 10.0+ (sólo si vas a correr los tests sin Docker)
+- Docker + Docker Compose (required)
+- .NET SDK 10.0+ (only needed to run tests outside Docker)
 
-## Ejecución con Docker
+## Running with Docker
 
 ```bash
 docker compose up --build
 ```
 
-Levanta dos contenedores:
-- `employees-db` → `postgres:16-alpine`, expuesto en `5432`.
-- `employees-api` → API en `http://localhost:8080`.
+Starts two containers:
+- `employees-db` → `postgres:16-alpine`, exposed on port `5432`.
+- `employees-api` → API available at `http://localhost:8080`.
 
-Al arrancar, la API aplica migraciones automáticamente y siembra:
-- Roles `Admin` y `User`.
-- Usuario admin (`admin@example.com` / `Admin1234`).
+On startup the API automatically applies EF Core migrations and seeds:
+- Roles `Admin` and `User`.
+- Default admin user (`admin@example.com` / `Admin1234`).
 
 Swagger UI: `http://localhost:8080/swagger`
 
-## Flujo de uso
+## Endpoint Testing — Full curl Walkthrough
+
+### Setup — get an Admin token
 
 ```bash
-# 1. Login como admin
-curl -X POST http://localhost:8080/api/auth/login \
+# 1. Login as admin
+curl -s -X POST http://localhost:8080/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@example.com","password":"Admin1234"}'
-```
-![alt text](image.png)
-```bash
-# Guarda el token. Luego:
-TOKEN="<token-obtenido>"
+  -d '{"email":"admin@example.com","password":"Admin1234"}' | cat
 
-# 2. Crear empleado (requiere rol Admin)
-curl -X POST http://localhost:8080/api/employees \
+# Copy the token from the response and set it:
+TOKEN="<paste-token-here>"
+```
+
+---
+
+### Employee CRUD (Admin token)
+
+```bash
+# 2. GET all employees — returns empty list initially (Admin and User roles)
+curl -s http://localhost:8080/api/employees \
+  -H "Authorization: Bearer $TOKEN" | cat
+# Expected: 200 []
+
+# 3. POST — create an employee (Admin only)
+curl -s -X POST http://localhost:8080/api/employees \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"name":"Ada Lovelace","currentPosition":2,"salary":5000,"departmentId":null}'
+  -d '{"name":"Ada Lovelace","currentPosition":2,"salary":5000,"departmentId":null}' | cat
+# Expected: 201 — employee created, yearlyBonus: 1000 (20% of 5000)
 
-# 3. Listar empleados (Admin o User)
-curl http://localhost:8080/api/employees -H "Authorization: Bearer $TOKEN"
+# 4. GET employee by id (Admin and User roles)
+curl -s http://localhost:8080/api/employees/1 \
+  -H "Authorization: Bearer $TOKEN" | cat
+# Expected: 200 — employee details
 
-# 4. Registrar usuario con rol User
-curl -X POST http://localhost:8080/api/auth/register \
+# 5. PUT — update employee (Admin only)
+curl -s -X PUT http://localhost:8080/api/employees/1 \
+  -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"User1234"}'
+  -d '{"name":"Ada Lovelace Updated","currentPosition":3,"salary":6000,"departmentId":null}' | cat
+# Expected: 200 — updated employee, yearlyBonus: 1500 (25% of 6000)
+
+# 6. DELETE — remove employee (Admin only)
+curl -s -X DELETE http://localhost:8080/api/employees/1 \
+  -H "Authorization: Bearer $TOKEN" | cat
+# Expected: 204 No Content
 ```
 
-`currentPosition`: 1 = Regular (10%), 2 = Manager (20%), 3 = SeniorManager (25%).
+---
+
+### Role-based authorization check
+
+```bash
+# Register a User-role account
+curl -s -X POST http://localhost:8080/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"User1234"}' | cat
+
+# Set the User token
+USER_TOKEN="<paste-user-token-here>"
+
+# 7. GET — User can list employees (allowed)
+curl -s http://localhost:8080/api/employees \
+  -H "Authorization: Bearer $USER_TOKEN" | cat
+# Expected: 200
+
+# POST — User cannot create employees (forbidden)
+curl -s -X POST http://localhost:8080/api/employees \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test","currentPosition":1,"salary":3000,"departmentId":null}' | cat
+# Expected: 403 Forbidden
+```
+
+`currentPosition`: 1 = Regular (10% bonus), 2 = Manager (20%), 3 = SeniorManager (25%)
 
 ## Tests
 
@@ -111,20 +158,20 @@ curl -X POST http://localhost:8080/api/auth/register \
 dotnet test
 ```
 
-Cubre: strategies, factory y `EmployeeService` (con mocks de repository y bonus calculator).
+Covers: bonus strategies, factory selection logic, and `EmployeeService` (with mocked repository and bonus calculator).
 
-## Base de datos
+## Database Schema
 
-Tablas (todas gestionadas por EF Core migrations):
+All tables managed by EF Core migrations:
 
 - `employees` (Id, Name, CurrentPosition, Salary, DepartmentId)
 - `position_history` (Id, EmployeeId, Position, StartDate, EndDate)
 - `departments` (Id, Name)
 - `projects` (Id, Name, StartDate, EndDate)
-- `employee_projects` (tabla puente m2m)
-- Tablas de Identity: `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, etc.
+- `employee_projects` (many-to-many join table)
+- Identity tables: `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, etc.
 
-### Query LINQ pedida (sección 4.3)
+### LINQ query — Section 4.3
 
 `EmployeeRepository.GetByDepartmentWithProjectsAsync`:
 
@@ -138,23 +185,23 @@ return await _context.Employees
 
 ## Endpoints
 
-| Método | Ruta                    | Roles       |
+| Method | Route                   | Roles       |
 | ------ | ----------------------- | ----------- |
 | GET    | `/api/employees`        | Admin, User |
 | GET    | `/api/employees/{id}`   | Admin, User |
 | POST   | `/api/employees`        | Admin       |
 | PUT    | `/api/employees/{id}`   | Admin       |
 | DELETE | `/api/employees/{id}`   | Admin       |
-| POST   | `/api/auth/register`    | anónimo     |
-| POST   | `/api/auth/login`       | anónimo     |
+| POST   | `/api/auth/register`    | anonymous   |
+| POST   | `/api/auth/login`       | anonymous   |
 
-## Respuestas a las preguntas textuales de la prueba
+## Technical Questions — Written Answers
 
-### 2.2 — Autenticación y autorización
+### Section 2.2 — Authentication and Authorization
 
-Se usa ASP.NET Core Identity para gestión de usuarios/roles (persistidos con EF Core sobre PostgreSQL) y JWT Bearer para autenticación stateless.
+ASP.NET Core Identity manages users and roles (persisted via EF Core on PostgreSQL). JWT Bearer handles stateless authentication.
 
-Al arranque se registra el esquema Bearer con:
+The Bearer scheme is registered at startup:
 
 ```csharp
 builder.Services
@@ -174,34 +221,34 @@ builder.Services
     });
 ```
 
-La autorización se aplica de forma declarativa por controller/action con `[Authorize(Roles = "...")]`. El `JwtTokenService` inyecta el claim `role` en el token; el middleware de autorización lo evalúa contra los atributos.
+Authorization is applied declaratively per controller/action with `[Authorize(Roles = "...")]`. `JwtTokenService` injects the `role` claim into the token; the authorization middleware evaluates it against those attributes.
 
-### 2.3 — Middleware
+### Section 2.3 — Middleware
 
-Un middleware en ASP.NET Core es un componente que participa en el pipeline de procesamiento de cada request HTTP. Cada componente puede: (a) inspeccionar/modificar la request, (b) invocar al siguiente componente vía `RequestDelegate`, (c) inspeccionar/modificar la response. Se registran en orden en `Program.cs`; el orden importa (por ejemplo, `UseAuthentication` va antes de `UseAuthorization`).
+Middleware in ASP.NET Core is a component that participates in the HTTP request processing pipeline. Each component can: (a) inspect/modify the request, (b) invoke the next component via `RequestDelegate`, (c) inspect/modify the response. Components are registered in order in `Program.cs` — order matters (e.g., `UseAuthentication` must come before `UseAuthorization`).
 
-Este proyecto incluye `RequestLoggingMiddleware` (`src/EmployeeManagement.Api/Middleware/RequestLoggingMiddleware.cs`) que registra método, ruta, status code, duración en ms y el `correlationId` (TraceIdentifier) de cada request.
+This project includes `RequestLoggingMiddleware` (`src/EmployeeManagement.Api/Middleware/RequestLoggingMiddleware.cs`) that logs the HTTP method, path, status code, duration in ms, and the `correlationId` (TraceIdentifier) for every request.
 
-### 5.1 — Problemas comunes de performance en .NET
+### Section 5.1 — Common Performance Issues in .NET
 
-- **Consultas N+1** con EF Core → usar `Include`/proyecciones explícitas.
-- **Falta de `AsNoTracking()`** en lecturas → EF crea entidades tracked innecesariamente.
-- **Materializar toda la tabla** (`.ToList()` antes de `.Where()`) → filtrar en el servidor SQL.
-- **Bloqueo síncrono en I/O** → usar `async/await` de punta a punta.
-- **Overhead del garbage collector** por allocaciones grandes → `Span<T>`, `ArrayPool<T>`, pooling.
-- **Serialización JSON pesada** → `System.Text.Json` en lugar de `Newtonsoft.Json`, source generators.
-- **Falta de cache** para lecturas frecuentes → `IMemoryCache` / `IDistributedCache`.
-- **Reflection en hot paths** → cachear delegados compilados o compiled expressions.
+- **N+1 queries** with EF Core → use explicit `Include` or projections.
+- **Missing `AsNoTracking()`** on reads → EF unnecessarily tracks entities.
+- **Materializing full tables** (`.ToList()` before `.Where()`) → filter on the server side.
+- **Synchronous I/O blocking** → use `async/await` end-to-end.
+- **GC pressure from large allocations** → `Span<T>`, `ArrayPool<T>`, object pooling.
+- **Heavy JSON serialization** → prefer `System.Text.Json` with source generators over `Newtonsoft.Json`.
+- **Missing cache for frequent reads** → `IMemoryCache` / `IDistributedCache`.
+- **Reflection in hot paths** → cache compiled delegates or expression trees.
 
-### 5.2 — Profiling y optimización de una query lenta
+### Section 5.2 — Profiling and Optimizing a Slow Query
 
-1. **Reproducir y medir**: capturar el SQL real con `EnableSensitiveDataLogging()` en desarrollo o mediante `IDbCommandInterceptor` en producción.
-2. **`EXPLAIN (ANALYZE, BUFFERS)`** en PostgreSQL para ver plan de ejecución, si hay `Seq Scan` en tablas grandes o hash joins costosos.
-3. **Índices** en columnas de filtro (`WHERE`) y de join. Compuestos si el filtro es multi-columna.
-4. **`AsNoTracking()`** en lecturas de sólo lectura.
-5. **Proyección** a un DTO con `.Select(...)` para leer sólo las columnas necesarias.
-6. **Paginación** obligatoria (`Skip/Take`).
-7. **`AsSplitQuery()`** cuando se hacen múltiples `Include` que causan un cartesian explosion.
-8. **Cache** de resultados si aplica.
-9. **APM/Perfilado** (MiniProfiler, dotTrace, Application Insights) para localizar hotspots.
-10. Si la query es puntual y compleja: usar un stored procedure o `FromSqlRaw` como último recurso.
+1. **Reproduce and measure**: capture the actual SQL with `EnableSensitiveDataLogging()` in development, or via `IDbCommandInterceptor` in production.
+2. **`EXPLAIN (ANALYZE, BUFFERS)`** in PostgreSQL to inspect the execution plan — look for `Seq Scan` on large tables or expensive hash joins.
+3. **Indexes** on filter (`WHERE`) and join columns. Use composite indexes for multi-column filters.
+4. **`AsNoTracking()`** on read-only queries.
+5. **Projection** to a DTO with `.Select(...)` to fetch only the required columns.
+6. **Mandatory pagination** (`Skip/Take`).
+7. **`AsSplitQuery()`** when multiple `Include` calls cause a Cartesian explosion.
+8. **Result caching** where applicable.
+9. **APM / profiling tools** (MiniProfiler, dotTrace, Application Insights) to locate hotspots.
+10. For isolated complex queries: consider a stored procedure or `FromSqlRaw` as a last resort.
