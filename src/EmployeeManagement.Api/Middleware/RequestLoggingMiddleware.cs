@@ -13,8 +13,16 @@ public class RequestLoggingMiddleware
         _logger = logger;
     }
 
+    private static readonly string[] _skipPrefixes = ["/swagger", "/health", "/favicon.ico"];
+
     public async Task InvokeAsync(HttpContext context)
     {
+        if (_skipPrefixes.Any(p => context.Request.Path.StartsWithSegments(p)))
+        {
+            await _next(context);
+            return;
+        }
+
         var correlationId = context.TraceIdentifier;
         var stopwatch = Stopwatch.StartNew();
 

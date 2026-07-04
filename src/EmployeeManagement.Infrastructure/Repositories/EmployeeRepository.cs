@@ -14,7 +14,6 @@ public class EmployeeRepository : IEmployeeRepository
     public Task<Employee?> GetByIdAsync(int id, CancellationToken ct = default) =>
         _context.Employees
             .Include(e => e.PositionHistory)
-            .Include(e => e.Projects)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
     public async Task<IEnumerable<Employee>> GetAllAsync(CancellationToken ct = default) =>
@@ -35,14 +34,8 @@ public class EmployeeRepository : IEmployeeRepository
         await _context.SaveChangesAsync(ct);
     }
 
-    public async Task<bool> DeleteAsync(int id, CancellationToken ct = default)
-    {
-        var employee = await _context.Employees.FindAsync(new object?[] { id }, ct);
-        if (employee is null) return false;
-        _context.Employees.Remove(employee);
-        await _context.SaveChangesAsync(ct);
-        return true;
-    }
+    public async Task<bool> DeleteAsync(int id, CancellationToken ct = default) =>
+        await _context.Employees.Where(e => e.Id == id).ExecuteDeleteAsync(ct) > 0;
 
     public async Task<IEnumerable<Employee>> GetByDepartmentWithProjectsAsync(
         int departmentId, CancellationToken ct = default) =>

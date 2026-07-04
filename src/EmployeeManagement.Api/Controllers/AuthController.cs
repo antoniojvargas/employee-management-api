@@ -13,15 +13,19 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService authService) => _authService = authService;
 
     [HttpPost("register")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResponseDto>> Register(
         [FromBody] RegisterDto dto, CancellationToken ct)
     {
-        var response = await _authService.RegisterAsync(dto, ct);
-        if (response is null) return BadRequest(new { message = "Registration failed." });
-        return Ok(response);
+        var result = await _authService.RegisterAsync(dto, ct);
+        if (!result.Succeeded) return BadRequest(new { errors = result.Errors });
+        return Ok(result.Token);
     }
 
     [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponseDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponseDto>> Login(
         [FromBody] LoginDto dto, CancellationToken ct)
     {

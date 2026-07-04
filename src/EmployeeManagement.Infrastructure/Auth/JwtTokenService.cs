@@ -9,6 +9,8 @@ namespace EmployeeManagement.Infrastructure.Auth;
 
 public class JwtTokenService : IJwtTokenService
 {
+    private static readonly JwtSecurityTokenHandler _tokenHandler = new();
+
     private readonly JwtOptions _options;
 
     public JwtTokenService(IOptions<JwtOptions> options) => _options = options.Value;
@@ -35,7 +37,7 @@ public class JwtTokenService : IJwtTokenService
             expires: expiresAt,
             signingCredentials: creds);
 
-        var token = new JwtSecurityTokenHandler().WriteToken(jwt);
+        var token = _tokenHandler.WriteToken(jwt);
         return (token, expiresAt);
     }
 }

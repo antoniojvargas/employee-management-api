@@ -2,7 +2,6 @@ using System.Text;
 using EmployeeManagement.Api.Middleware;
 using EmployeeManagement.Infrastructure.Auth;
 using EmployeeManagement.Infrastructure.DependencyInjection;
-using EmployeeManagement.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -60,7 +59,7 @@ builder.Services.AddSwaggerGen(options =>
 
 var app = builder.Build();
 
-await DatabaseSeeder.MigrateAndSeedAsync(app.Services);
+await app.MigrateAndSeedAsync();
 
 app.UseMiddleware<RequestLoggingMiddleware>();
 

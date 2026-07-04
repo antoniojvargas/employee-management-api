@@ -1,3 +1,4 @@
+using EmployeeManagement.Application.Constants;
 using EmployeeManagement.Application.Dtos;
 using EmployeeManagement.Application.Services;
 using EmployeeManagement.Infrastructure.Identity;
@@ -7,8 +8,6 @@ namespace EmployeeManagement.Infrastructure.Auth;
 
 public class AuthService : IAuthService
 {
-    public const string DefaultUserRole = "User";
-
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenService _jwtTokenService;
 
@@ -20,16 +19,17 @@ public class AuthService : IAuthService
         _jwtTokenService = jwtTokenService;
     }
 
-    public async Task<AuthResponseDto?> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
+    public async Task<AuthResult> RegisterAsync(RegisterDto dto, CancellationToken ct = default)
     {
         var user = new ApplicationUser { UserName = dto.Email, Email = dto.Email };
         var result = await _userManager.CreateAsync(user, dto.Password);
-        if (!result.Succeeded) return null;
+        if (!result.Succeeded)
+            return AuthResult.Failure(result.Errors.Select(e => e.Description));
 
-        await _userManager.AddToRoleAsync(user, DefaultUserRole);
+        await _userManager.AddToRoleAsync(user, Roles.User);
         var roles = await _userManager.GetRolesAsync(user);
         var (token, expiresAt) = _jwtTokenService.GenerateToken(user, roles);
-        return new AuthResponseDto(token, expiresAt);
+        return AuthResult.Success(new AuthResponseDto(token, expiresAt));
     }
 
     public async Task<AuthResponseDto?> LoginAsync(LoginDto dto, CancellationToken ct = default)

@@ -1,3 +1,4 @@
+using EmployeeManagement.Application.Constants;
 using EmployeeManagement.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -8,9 +9,6 @@ namespace EmployeeManagement.Infrastructure.Persistence;
 
 public static class DatabaseSeeder
 {
-    public const string AdminRole = "Admin";
-    public const string UserRole = "User";
-
     public static async Task MigrateAndSeedAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
@@ -20,12 +18,10 @@ public static class DatabaseSeeder
         await db.Database.MigrateAsync();
 
         var roleManager = provider.GetRequiredService<RoleManager<IdentityRole>>();
-        foreach (var role in new[] { AdminRole, UserRole })
+        foreach (var role in new[] { Roles.Admin, Roles.User })
         {
             if (!await roleManager.RoleExistsAsync(role))
-            {
                 await roleManager.CreateAsync(new IdentityRole(role));
-            }
         }
 
         var config = provider.GetRequiredService<IConfiguration>();
@@ -39,9 +35,7 @@ public static class DatabaseSeeder
             admin = new ApplicationUser { UserName = adminEmail, Email = adminEmail, EmailConfirmed = true };
             var created = await userManager.CreateAsync(admin, adminPassword);
             if (created.Succeeded)
-            {
-                await userManager.AddToRoleAsync(admin, AdminRole);
-            }
+                await userManager.AddToRoleAsync(admin, Roles.Admin);
         }
     }
 }

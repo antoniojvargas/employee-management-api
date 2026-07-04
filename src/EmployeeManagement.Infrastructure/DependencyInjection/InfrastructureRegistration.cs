@@ -5,6 +5,7 @@ using EmployeeManagement.Infrastructure.Auth;
 using EmployeeManagement.Infrastructure.Identity;
 using EmployeeManagement.Infrastructure.Persistence;
 using EmployeeManagement.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -38,10 +39,11 @@ public static class InfrastructureRegistration
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));
 
-        services.AddScoped<IBonusStrategy, RegularEmployeeBonusStrategy>();
-        services.AddScoped<IBonusStrategy, ManagerBonusStrategy>();
-        services.AddScoped<IBonusStrategy, SeniorManagerBonusStrategy>();
-        services.AddScoped<IBonusCalculator, BonusCalculatorFactory>();
+        // Strategies are pure functions — safe and correct as Singletons
+        services.AddSingleton<IBonusStrategy, RegularEmployeeBonusStrategy>();
+        services.AddSingleton<IBonusStrategy, ManagerBonusStrategy>();
+        services.AddSingleton<IBonusStrategy, SeniorManagerBonusStrategy>();
+        services.AddSingleton<IBonusCalculator, BonusCalculatorFactory>();
 
         services.AddScoped<IEmployeeRepository, EmployeeRepository>();
         services.AddScoped<IEmployeeService, EmployeeService>();
@@ -51,4 +53,7 @@ public static class InfrastructureRegistration
 
         return services;
     }
+
+    public static async Task MigrateAndSeedAsync(this WebApplication app) =>
+        await DatabaseSeeder.MigrateAndSeedAsync(app.Services);
 }
