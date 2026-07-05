@@ -1,0 +1,322 @@
+{
+  "info": {
+    "name": "Employee Management API",
+    "description": "Colección para probar todos los endpoints de la Employee Management API.\n\n**Flujo recomendado:**\n1. Ejecutar «Login (Admin)» — el token se guarda automáticamente.\n2. Usar cualquier endpoint de Employees sin configuración adicional.\n3. Para probar restricciones de rol, ejecutar «Register» y luego «Login (User)».",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "employeeId",
+      "value": "1",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register (User)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"User1234\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Registra un nuevo usuario con rol User. Devuelve un JWT listo para usar."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.token) {",
+                  "        pm.collectionVariables.set('token', json.token);",
+                  "        console.log('Token guardado en variable de colección.');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login (Admin)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Admin1234\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login con el admin sembrado por defecto. El token JWT se guarda automáticamente en la variable `token` de la colección."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.token) {",
+                  "        pm.collectionVariables.set('token', json.token);",
+                  "        console.log('Token de Admin guardado.');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "Login (User)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"User1234\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login con un usuario de rol User (previamente creado con Register). Permite verificar que POST/PUT/DELETE retornan 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.token) {",
+                  "        pm.collectionVariables.set('token', json.token);",
+                  "        console.log('Token de User guardado.');",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Employees",
+      "item": [
+        {
+          "name": "GET All Employees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees"]
+            },
+            "description": "Devuelve todos los empleados con su historial de posiciones y bono anual calculado.\n\nRoles permitidos: Admin, User."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', function() {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is array', function() {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "GET Employee by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{employeeId}}"]
+            },
+            "description": "Devuelve un empleado por ID. Retorna 404 si no existe.\n\nRoles permitidos: Admin, User.\n\nModifica la variable `employeeId` de la colección para apuntar al ID deseado."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 404', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "POST Create Employee (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ada Lovelace\",\n  \"currentPosition\": 1,\n  \"salary\": 5000.00,\n  \"departmentId\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees"]
+            },
+            "description": "Crea un nuevo empleado. Retorna 201 con el empleado creado.\n\n**currentPosition:** 1 = Regular (bono 10%), 2 = Manager (bono 20%), 3 = SeniorManager (bono 25%)\n\nRol requerido: Admin. Con token de User retorna 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    if (json.id) {",
+                  "        pm.collectionVariables.set('employeeId', json.id);",
+                  "        console.log('employeeId actualizado a: ' + json.id);",
+                  "    }",
+                  "}",
+                  "pm.test('Status 201 or 403', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 403]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "PUT Update Employee (Admin)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ada Lovelace (actualizada)\",\n  \"currentPosition\": 2,\n  \"salary\": 7000.00,\n  \"departmentId\": null\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{employeeId}}"]
+            },
+            "description": "Actualiza un empleado existente. Retorna 200 con los datos actualizados o 404 si no existe.\n\nRol requerido: Admin. Con token de User retorna 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200, 404 or 403', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404, 403]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        },
+        {
+          "name": "DELETE Employee (Admin)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/employees/{{employeeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "employees", "{{employeeId}}"]
+            },
+            "description": "Elimina un empleado por ID. Retorna 204 si se eliminó correctamente o 404 si no existe.\n\nRol requerido: Admin. Con token de User retorna 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 204, 404 or 403', function() {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([204, 404, 403]);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "response": []
+        }
+      ]
+    }
+  ]
+}
