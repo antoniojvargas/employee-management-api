@@ -18,13 +18,13 @@ public record EmployeeDto(
     IReadOnlyCollection<PositionHistoryDto> PositionHistory);
 
 public record CreateEmployeeDto(
-    [property: Required][property: MaxLength(200)] string Name,
-    [property: Range(1, int.MaxValue)] int CurrentPosition,
-    [property: Range(typeof(decimal), "0.01", "9999999.99")] decimal Salary,
+    [Required][MaxLength(200)] string Name,
+    [Range(1, int.MaxValue)] int CurrentPosition,
+    [Range(typeof(decimal), "0.01", "9999999.99")] decimal Salary,
     int? DepartmentId);
 
 public record UpdateEmployeeDto(
-    [property: Required][property: MaxLength(200)] string Name,
-    [property: Range(1, int.MaxValue)] int CurrentPosition,
-    [property: Range(typeof(decimal), "0.01", "9999999.99")] decimal Salary,
+    [Required][MaxLength(200)] string Name,
+    [Range(1, int.MaxValue)] int CurrentPosition,
+    [Range(typeof(decimal), "0.01", "9999999.99")] decimal Salary,
     int? DepartmentId);

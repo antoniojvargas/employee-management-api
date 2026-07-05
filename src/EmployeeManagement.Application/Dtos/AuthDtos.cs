@@ -3,12 +3,12 @@ using System.ComponentModel.DataAnnotations;
 namespace EmployeeManagement.Application.Dtos;
 
 public record RegisterDto(
-    [property: Required][property: EmailAddress] string Email,
-    [property: Required][property: MinLength(8)] string Password);
+    [Required][EmailAddress] string Email,
+    [Required][MinLength(8)] string Password);
 
 public record LoginDto(
-    [property: Required][property: EmailAddress] string Email,
-    [property: Required] string Password);
+    [Required][EmailAddress] string Email,
+    [Required] string Password);
 
 public record AuthResponseDto(string Token, DateTime ExpiresAt);
 
